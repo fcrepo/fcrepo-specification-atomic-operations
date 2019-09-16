@@ -11,7 +11,7 @@
           specStatus: "unofficial",
           shortName:  "fedora-abo",
           includePermalinks: true,
-          editors: [
+          formerEditors: [
                 {   name:       "Ben Armintor",
                     company:    "Columbia University",
                     companyURL: "http://library.columbia.edu/"},
@@ -51,6 +51,11 @@
                 {   name:       "Andrew Woods",
                     company:    "DuraSpace",
                     companyURL: "http://duraspace.org/"}
+          ],
+          editors: [
+                {   name:       "Peter Eichman",
+                    company:    "University of Maryland",
+                    companyURL: "https://www.lib.umd.edu/"}
           ],
           edDraftURI: "https://fcrepo.github.io/fcrepo-specification-atomic-operations/",
           testSuiteURI: "https://github.com/fcrepo/fcrepo-tcks",
@@ -93,80 +98,129 @@
       <section id="atomic-operations-introduction" class="informative">
         <h2>Introduction</h2>
         <p>
-          Fedora provides factilities by which to conduct multiple operations against a repository
-          in an atomic fashion. This is accomplished by the use of headers on requests. An atomic
-          series of operations should not require any more requests than the same series of
-          operations performed non-atomically.
+          Fedora provides factilities by which to conduct multiple operations
+          against a repository in an atomic fashion.
+        </p>
+        <pre class="http">
+          HEAD http://example.org/foo
+
+          200 OK
+          Link: &lt;http://example.org/foo/fcr:tx>; rel="[URI TBD]"
+
+
+          POST http://example.org/foo/fcr:tx
+
+          201 Created
+          Location: http://example.org/foo/tx:01234567-89ab-cdef-0123-456789abcdef
+        </pre>
+      </section>
+
+      <section id="scope">
+        <h2>Transaction scope</h2>
+        <p>
+          Transactions are scoped to a resource and its path-wise children. In
+          this context, the resource is known as the <dfn>transaction
+          root</dfn>. The URI of this resource is a <dfn>transaction root
+          URI</dfn>.
+        </p>
+      </section>
+
+      <section id="identify">
+        <h2>Advertising support for atomic operations</h2>
+        <p>
+          A server that supports atomic operations MUST advertise this support
+          by including a <code>Link</code> header in responses to requests to
+          resources that can be transaction roots. The value of this link
+          header MUST be a resolvable HTTP URI. This URI is known as the
+          <dfn>transaction endpoint</dfn>. The <code>rel</code> parameter of
+          this header MUST be [URI TBD].
         </p>
       </section>
 
       <section id="begin">
         <h2>Beginning an atomic series of operations</h2>
         <p>
-          A client begins an atomic series of requests by sending any request to any resource with
-          the header <code>Atomic-Start</code>. The server MUST respond by including a header
-          <code>Atomic-ID</code> with a unique identifier for the series. The effect of the
-          request, if it has one, and if the request is successful, MUST be visible to clients
-          using that identifier to add to this series of requests, as described
-          <a href="#adding">below</a>, until the series expires or is finished. The effect of the
-          request, if it has one, and if the request is successful, SHOULD NOT be visible to
-          clients not using that identifier to add to this series of requests. The effect of the
-          request MUST NOT be durable unless and until the series is successfully
-          <a href="#commit">finished</a>.
+          A client begins an atomic series of requests by sending a POST request
+          to a transaction endpoint.
+        </p>
+        <p>
+          If the server is able to create the transaction, it MUST respond with
+          a <code>201 Created</code> HTTP status and include a
+          <code>Location</code> header that contains the <dfn>transaction base
+          URI</dfn>. The transaction base URI MUST be formed by appending a
+          unique <dfn>transaction identifier</dfn> to the transaction root URI.
         </p>
       </section>
 
       <section id="adding">
         <h2>Adding to an atomic series of operations</h2>
         <p>
-          A client adds to an atomic series of requests by sending any request to any resource with
-          the header <code>Atomic-ID</code> and the identifier for that series. The effect of the
-          request, if it has one, and if the request is successful, MUST be visible to clients
-          using that identifier to add to this series of requests, until the series expires or is
-          finished. The effect of the request, if it has one, and if the request is successful,
-          SHOULD NOT be visible to clients not using that identifier to add to this series of
-          requests. The effect of the request MUST NOT be durable unless and until the series is
-          successfully <a href="#commit">finished</a>. An implementation MUST respond
-          to any request with multiple <code>Atomic-ID</code> headers with different values or
-          with an <code>Atomic-ID</code> header with a value that has not been assigned to a
-          series or that has expired (see <a href="#expiration">below</a>) with a 409 response.
-          That response MUST include an <code>Atomic-Invalid</code> header or headers with the
-          invalid identifier or identifiers.
+          A client adds to an atomic batch operation by sending requests to URIs
+          that are path-wise children of an active transaction base URI.
+        </p>
+        <p>
+          The effect of the request, if it has one, and if the request is
+          successful, MUST be visible to clients using that identifier to add to
+          this series of requests, as described <a href="#adding">below</a>,
+          until the series expires or is finished. The effect of the request, if
+          it has one, and if the request is successful, SHOULD NOT be visible to
+          clients not using that identifier to add to this series of requests.
+          The effect of the request MUST NOT be durable unless and until the
+          series is successfully <a href="#commit">finished</a>.
+        </p>
+        <p>
+          If the client sending the current request is not authorized to access
+          this transaction, the server MUST NOT update any resources, and MUST
+          respond with a <code>404 Not Found</code> HTTP status.
+        </p>
+        <p>
+          If the client is authorized but the transaction identified by the
+          transaction base URI is invalid, the server MUST NOT update any
+          resources, and it MUST respond with a <code>409 Conflict</code> HTTP
+          status.
         </p>
       </section>
 
       <section id="expiration">
         <h2>Expiration</h2>
         <p>
-          An implementation MAY enforce automatic expiration for an atomic series of requests.
-          If so, the response to any request made as part of the series MUST have a
-          <code>Atomic-Expires</code> header with the HTTP datetime at which the series will
-          expire. An implementation MAY extend the lifetime of a series upon the receipt of any
-          request specifying the unique identifier of that series in the <code>Atomic-ID</code>
-          header.
+          An implementation MAY enforce automatic expiration for an atomic
+          series of requests.  If so, the response to any request made as part
+          of the series MUST have a <code>Atomic-Expires</code> header with the
+          HTTP datetime at which the series will expire.
         </p>
+        <p>
+          An implementation SHOULD extend the lifetime of a series upon the
+          receipt of any request to resources under the transaction base URI.
+        </p>
+        <p>
+          An implementation SHOULD permit extending the lifetime of a series by
+          a <code>POST</code> request to the transaction base URI.
       </section>
 
       <section id="commit">
         <h2>Committing a series</h2>
         <p>
-          A client can finish an atomic series of requests by sending any
-          <code>PUT</code>/<code>POST</code>/<code>PATCH</code>/<code>DELETE</code> request
-          including both a <code>Atomic-Commit</code> header and a <code>Atomic-ID</code>
-          header with the unique identifier of an existing series. The effects of all requests
-          in the series MUST become durable and MUST become visible to all clients. The unique
-          identifier of the series MUST be expired and MUST NOT be reused.
+          A client finishes an atomic series of requests by sending a
+          <code>PUT</code> request to the transaction base URI.
+        </p>
+        <p>
+          The effects of all requests in the series MUST become durable and MUST
+          become visible to all clients. The unique identifier of the series
+          MUST be expired and MUST NOT be reused.
         </p>
       </section>
 
       <section id="abort">
         <h2>Aborting a series</h2>
         <p>
-          A client can finish an atomic series of requests by sending any request including
-          both a <code>Atomic-Abort</code> header and a <code>Atomic-ID</code> header with
-          the unique identifier of an existing series. The effects of all requests in the
-          series MUST disappear to all clients, and MUST be durably gone. The unique identifier
-          of the series MUST be expired and MUST NOT be reused.
+          A client aborts an atomic series of requests by sending a
+          <code>DELETE</code> request to the transaction base URI.
+        </p>
+        <p>
+          The effects of all requests in the series MUST disappear to all
+          clients, and MUST be durably gone. The unique identifier of the series
+          MUST be expired and MUST NOT be reused.
         </p>
       </section>
     </section>
