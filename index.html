@@ -102,16 +102,53 @@
           against a repository in an atomic fashion.
         </p>
         <pre class="http">
+          # Discover the transaction endpoint
+
           HEAD http://example.org/foo
 
           200 OK
           Link: &lt;http://example.org/foo/fcr:tx>; rel="[URI TBD]"
 
+          # Begin a transaction
 
           POST http://example.org/foo/fcr:tx
 
           201 Created
-          Location: http://example.org/foo/tx:01234567-89ab-cdef-0123-456789abcdef
+          Location: http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+
+          # Create a new resource within the transaction
+
+          POST http://example.org/foo
+          Atomic-ID: http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+
+          201 Created
+          Location: http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
+          Link: &lt;http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef>; rel="[URI TBD]"
+
+          # That resource is not visible outside of the transaction
+
+          HEAD http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
+
+          404 Not Found
+
+          # But is visible within the transaction
+
+          HEAD http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
+          Atomic-ID: http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+
+          200 OK
+
+          # Commit the transaction
+
+          PUT http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+
+          204 No Content
+
+          # Now the new resource is visible outside the transaction
+
+          HEAD http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
+
+          200 OK
         </pre>
       </section>
 
@@ -145,39 +182,44 @@
         </p>
         <p>
           If the server is able to create the transaction, it MUST respond with
-          a <code>201 Created</code> HTTP status and include a
-          <code>Location</code> header that contains the <dfn>transaction base
-          URI</dfn>. The transaction base URI MUST be formed by appending a
-          unique <dfn>transaction identifier</dfn> to the transaction root URI.
+          a <code>201 Created</code> HTTP status and MUST include a
+          <code>Location</code> header that contains the <dfn>transaction
+          URI</dfn>.
         </p>
       </section>
 
       <section id="adding">
         <h2>Adding to an atomic series of operations</h2>
         <p>
-          A client adds to an atomic batch operation by sending requests to URIs
-          that are path-wise children of an active transaction base URI.
+          A client adds to an atomic batch operation by including an
+          <code>Atomic-ID</code> request header. The value of this header is an
+          active transaction URI.
         </p>
         <p>
           The effect of the request, if it has one, and if the request is
           successful, MUST be visible to clients using that identifier to add to
-          this series of requests, as described <a href="#adding">below</a>,
-          until the series expires or is finished. The effect of the request, if
-          it has one, and if the request is successful, SHOULD NOT be visible to
-          clients not using that identifier to add to this series of requests.
-          The effect of the request MUST NOT be durable unless and until the
-          series is successfully <a href="#commit">finished</a>.
+          this series of requests, as described here, until the series expires
+          or is finished. The effect of the request, if it has one, and if the
+          request is successful, SHOULD NOT be visible to clients not using that
+          identifier to add to this series of requests.  The effect of the
+          request MUST NOT be durable unless and until the series is
+          successfully <a href="#commit">finished</a>.
         </p>
         <p>
+          If the request is successful, the server MUST include a
+          <code>Link</code> response header whose value MUST be the current
+          transaction URI. The <code>rel</code> parameter MUST be [URI TBD].
+        <p>
           If the client sending the current request is not authorized to access
-          this transaction, the server MUST NOT update any resources, and MUST
-          respond with a <code>404 Not Found</code> HTTP status.
+          the transaction identified by the <code>Atomic-ID</code> header, the
+          server MUST NOT update any resources, and MUST respond with a
+          <code>404 Not Found</code> HTTP status.
         </p>
         <p>
           If the client is authorized but the transaction identified by the
-          transaction base URI is invalid, the server MUST NOT update any
-          resources, and it MUST respond with a <code>409 Conflict</code> HTTP
-          status.
+          <code>Atomic-ID</code> header is inactive, the server MUST NOT update
+          any resources, and it MUST respond with a <code>409 Conflict</code>
+          HTTP status.
         </p>
       </section>
 
@@ -191,23 +233,24 @@
         </p>
         <p>
           An implementation SHOULD extend the lifetime of a series upon the
-          receipt of any request to resources under the transaction base URI.
+          receipt of any request to resources within the scope of the
+          transaction.
         </p>
         <p>
           An implementation SHOULD permit extending the lifetime of a series by
-          a <code>POST</code> request to the transaction base URI.
+          a <code>POST</code> request to the transaction URI.
       </section>
 
       <section id="commit">
         <h2>Committing a series</h2>
         <p>
           A client finishes an atomic series of requests by sending a
-          <code>PUT</code> request to the transaction base URI.
+          <code>PUT</code> request to the transaction URI.
         </p>
         <p>
           The effects of all requests in the series MUST become durable and MUST
-          become visible to all clients. The unique identifier of the series
-          MUST be expired and MUST NOT be reused.
+          become visible to all clients. The transaction URI of the series MUST
+          be expired and MUST NOT be reused.
         </p>
       </section>
 
@@ -215,11 +258,11 @@
         <h2>Aborting a series</h2>
         <p>
           A client aborts an atomic series of requests by sending a
-          <code>DELETE</code> request to the transaction base URI.
+          <code>DELETE</code> request to the transaction URI.
         </p>
         <p>
           The effects of all requests in the series MUST disappear to all
-          clients, and MUST be durably gone. The unique identifier of the series
+          clients, and MUST be durably gone. The transaction URI of the series
           MUST be expired and MUST NOT be reused.
         </p>
       </section>
