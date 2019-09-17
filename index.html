@@ -90,8 +90,19 @@
     </section>
     <section id="conformance">
     </section>
-		<section id="terminology">
-		</section>
+    <section id="terminology">
+      <h2>Terminology</h2>
+      <dl>
+        <dt>transaction endpoint</dt>
+        <dd>an HTTP resource that supports operations to create a new
+        transaction</dd>
+        <dt>transaction root</dt>
+        <dd>the HTTP resource that a given transaction is scoped to</dd>
+        <dt>transaction identifier</dt>
+        <dd>a resolvable HTTP URI that uniquely identifies a transaction and
+        which supports operations to mangage that transaction</dd>
+      </dl>
+    </section>
     <section id ="atomic-operations">
       <h2>Atomic Operations</h2>
 
@@ -183,8 +194,9 @@
         <p>
           If the server is able to create the transaction, it MUST respond with
           a <code>201 Created</code> HTTP status and MUST include a
-          <code>Location</code> header that contains the <dfn>transaction
-          URI</dfn>.
+          <code>Location</code> header whose value is a <dfn>transaction
+          identifier</dfn>. A transaction identifier MUST be a resolvable HTTP
+          URI.
         </p>
       </section>
 
@@ -192,28 +204,31 @@
         <h2>Adding to an atomic series of operations</h2>
         <p>
           A client adds to an atomic batch operation by including an
-          <code>Atomic-ID</code> request header. The value of this header is an
-          active transaction URI.
+          <code>Atomic-ID</code> request header. The value of this header is a
+          transaction identifier.
         </p>
         <p>
           The effect of the request, if it has one, and if the request is
-          successful, MUST be visible to clients using that identifier to add to
-          this series of requests, as described here, until the series expires
-          or is finished. The effect of the request, if it has one, and if the
-          request is successful, SHOULD NOT be visible to clients not using that
-          identifier to add to this series of requests.  The effect of the
-          request MUST NOT be durable unless and until the series is
-          successfully <a href="#commit">finished</a>.
+          successful, MUST be visible to clients using the same transaction
+          identifier as the value of the <code>Atomic-ID</code> header, as
+          described here, until the series expires or is finished. The effect of
+          the request, if it has one, and if the request is successful, SHOULD
+          NOT be visible to clients not using that transaction identifier The
+          effect of the request MUST NOT be durable unless and until the series
+          is successfully <a href="#commit">finished</a>.
         </p>
         <p>
           If the request is successful, the server MUST include a
           <code>Link</code> response header whose value MUST be the current
-          transaction URI. The <code>rel</code> parameter MUST be [URI TBD].
+          transaction identifier. The <code>rel</code> parameter MUST be [URI
+          TBD].
         </p>
         <p>
           If the transaction identified by the <code>Atomic-ID</code> header is
           inactive, the server MUST NOT update any resources, and it MUST
-          respond with a <code>409 Conflict</code> HTTP status.
+          respond with a <code>409 Conflict</code> HTTP status. The server MAY
+          also include more information about the reason for rejecting the
+          request in the response body.
         </p>
       </section>
 
@@ -232,19 +247,19 @@
         </p>
         <p>
           An implementation SHOULD permit extending the lifetime of a series by
-          a <code>POST</code> request to the transaction URI.
+          a <code>POST</code> request to the transaction identifier URI.
       </section>
 
       <section id="commit">
         <h2>Committing a series</h2>
         <p>
           A client finishes an atomic series of requests by sending a
-          <code>PUT</code> request to the transaction URI.
+          <code>PUT</code> request to the transaction identifier URI.
         </p>
         <p>
           The effects of all requests in the series MUST become durable and MUST
-          become visible to all clients. The transaction URI of the series MUST
-          be expired and MUST NOT be reused.
+          become visible to all clients. The transaction identifier of the
+          series MUST be expired and MUST NOT be reused.
         </p>
       </section>
 
@@ -252,12 +267,12 @@
         <h2>Aborting a series</h2>
         <p>
           A client aborts an atomic series of requests by sending a
-          <code>DELETE</code> request to the transaction URI.
+          <code>DELETE</code> request to the transaction identifier URI.
         </p>
         <p>
           The effects of all requests in the series MUST disappear to all
-          clients, and MUST be durably gone. The transaction URI of the series
-          MUST be expired and MUST NOT be reused.
+          clients, and MUST be durably gone. The transaction identifier URI of
+          the series MUST be expired and MUST NOT be reused.
         </p>
       </section>
     </section>
