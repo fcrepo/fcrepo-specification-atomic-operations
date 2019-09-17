@@ -209,17 +209,11 @@
           If the request is successful, the server MUST include a
           <code>Link</code> response header whose value MUST be the current
           transaction URI. The <code>rel</code> parameter MUST be [URI TBD].
-        <p>
-          If the client sending the current request is not authorized to access
-          the transaction identified by the <code>Atomic-ID</code> header, the
-          server MUST NOT update any resources, and MUST respond with a
-          <code>404 Not Found</code> HTTP status.
         </p>
         <p>
-          If the client is authorized but the transaction identified by the
-          <code>Atomic-ID</code> header is inactive, the server MUST NOT update
-          any resources, and it MUST respond with a <code>409 Conflict</code>
-          HTTP status.
+          If the transaction identified by the <code>Atomic-ID</code> header is
+          inactive, the server MUST NOT update any resources, and it MUST
+          respond with a <code>409 Conflict</code> HTTP status.
         </p>
       </section>
 
