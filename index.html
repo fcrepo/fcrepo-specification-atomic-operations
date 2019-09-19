@@ -215,10 +215,10 @@
         </p>
         <p>
           If the transaction identified by the <code>Atomic-ID</code> header is
-          inactive, the server MUST NOT update any resources, and it MUST
-          respond with a <code>409 Conflict</code> HTTP status. The server MAY
-          also include more information about the reason for rejecting the
-          request in the response body.
+          invalid for any reason, the server MUST NOT update any resources, and
+          it MUST respond with a <code>409 Conflict</code> HTTP status. The
+          server MAY also include more information about the reason for
+          rejecting the request in the response body.
         </p>
       </section>
 
@@ -247,9 +247,22 @@
           <code>PUT</code> request to the transaction identifier URI.
         </p>
         <p>
+          The request body of this request MAY be non-empty. If it is non-empty,
+          [TODO: should we specify? or leave it up to implementations; this
+          could be a place to include commit messages, author info, etc.]
+        </p>
+        <p>
           The effects of all requests in the series MUST become durable and MUST
           become visible to all clients. The transaction identifier of the
           series MUST be expired and MUST NOT be reused.
+        </p>
+        <p>
+          If the server is able to successfully complete this request, it MUST
+          respond with a <code>2xx</code>-series HTTP status.
+        </p>
+        <p>
+          If the server is unable to successfully complete this request, it MUST
+          respond with a <code>409 Conflict</code> HTTP status.
         </p>
       </section>
 
@@ -263,6 +276,14 @@
           The effects of all requests in the series MUST disappear to all
           clients, and MUST be durably gone. The transaction identifier URI of
           the series MUST be expired and MUST NOT be reused.
+        </p>
+        <p>
+          If the server is able to successfully complete this request, it MUST
+          respond with a <code>2xx</code>-series HTTP status.
+        </p>
+        <p>
+          If the server is unable to successfully complete this request, it MUST
+          respond with a <code>409 Conflict</code> HTTP status.
         </p>
       </section>
     </section>
