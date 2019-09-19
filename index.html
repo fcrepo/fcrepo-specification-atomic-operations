@@ -96,11 +96,9 @@
         <dt>transaction endpoint</dt>
         <dd>an HTTP resource that supports operations to create a new
         transaction</dd>
-        <dt>transaction root</dt>
-        <dd>the HTTP resource that a given transaction is scoped to</dd>
         <dt>transaction identifier</dt>
-        <dd>a resolvable HTTP URI that uniquely identifies a transaction and
-        which supports operations to mangage that transaction</dd>
+        <dd>an HTTP resource that uniquely identifies a trasnaction, and which
+        may be used to perform operations on that transaction</dd>
       </dl>
     </section>
     <section id ="atomic-operations">
@@ -115,73 +113,66 @@
         <pre class="http">
           # Discover the transaction endpoint
 
-          HEAD http://example.org/foo
+          HEAD http://example.org/repo
 
           200 OK
-          Link: &lt;http://example.org/foo/fcr:tx>; rel="[URI TBD]"
+          Link: &lt;http://example.org/repo/fcr:tx>; rel="[URI TBD]"
 
           # Begin a transaction
 
-          POST http://example.org/foo/fcr:tx
+          POST http://example.org/repo/fcr:tx
 
           201 Created
-          Location: http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          Location: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
 
           # Create a new resource within the transaction
 
-          POST http://example.org/foo
-          Atomic-ID: http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          POST http://example.org/repo/container
+          Atomic-ID: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
 
           201 Created
-          Location: http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
-          Link: &lt;http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef>; rel="[URI TBD]"
+          Location: http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
+          Atomic-ID: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
 
           # That resource is not visible outside of the transaction
 
-          HEAD http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
+          HEAD http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
 
           404 Not Found
 
           # But is visible within the transaction
 
-          HEAD http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
-          Atomic-ID: http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          HEAD http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
+          Atomic-ID: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
 
           200 OK
 
           # Commit the transaction
 
-          PUT http://example.org/foo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          PUT http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
 
           204 No Content
 
           # Now the new resource is visible outside the transaction
 
-          HEAD http://example.org/foo/abcdef01-2345-6789-abcd-ef0123456789
+          HEAD http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
 
           200 OK
         </pre>
       </section>
 
       <section id="scope">
-        <h2>Transaction scope</h2>
+        <h2>Transaction endpoint</h2>
         <p>
-          Transactions are scoped to a resource and its path-wise children. In
-          this context, the resource is known as the <dfn>transaction
-          root</dfn>. The URI of this resource is a <dfn>transaction root
-          URI</dfn>.
+          Transactions are created through a <dfn>transaction endpoint</dfn>.
+          The <dfn>transaction endpoint URI</dfn> MUST be a resolvable HTTP URI.
         </p>
-      </section>
-
-      <section id="identify">
-        <h2>Advertising support for atomic operations</h2>
         <p>
           A server that supports atomic operations MUST advertise this support
-          by including a <code>Link</code> header in responses to requests to
-          resources that can be transaction roots. The value of this link
-          header MUST be a resolvable HTTP URI. This URI is known as the
-          <dfn>transaction endpoint</dfn>. The <code>rel</code> parameter of
-          this header MUST be [URI TBD].
+          by including a <code>Link</code> header in responses to requests for
+          the repository root. The value of this link MUST be the transaction
+          endpoint URI. The <code>rel</code> parameter of this header MUST be
+          <code>http://fedora.info/definitions/v4/transaction#endpoint</code>.
         </p>
       </section>
 
@@ -219,9 +210,8 @@
         </p>
         <p>
           If the request is successful, the server MUST include a
-          <code>Link</code> response header whose value MUST be the current
-          transaction identifier. The <code>rel</code> parameter MUST be [URI
-          TBD].
+          <code>Atomic-ID</code> response header whose value MUST be the current
+          transaction identifier.
         </p>
         <p>
           If the transaction identified by the <code>Atomic-ID</code> header is
