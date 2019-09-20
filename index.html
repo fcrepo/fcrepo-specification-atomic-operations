@@ -97,8 +97,8 @@
         <dd>an HTTP resource that supports operations to create a new
         transaction</dd>
         <dt>transaction identifier</dt>
-        <dd>an HTTP resource that uniquely identifies a trasnaction, and which
-        may be used to perform operations on that transaction</dd>
+        <dd>a URI that uniquely identifies a transaction, and which may be used
+        to perform operations on that transaction</dd>
       </dl>
     </section>
     <section id ="atomic-operations">
@@ -116,7 +116,7 @@
           HEAD http://example.org/repo
 
           200 OK
-          Link: &lt;http://example.org/repo/fcr:tx>; rel="[URI TBD]"
+          Link: &lt;http://example.org/repo/fcr:tx>; rel="http://fedora.info/definitions/v4/transaction#endpoint"
 
           # Begin a transaction
 
@@ -204,7 +204,7 @@
           identifier as the value of the <code>Atomic-ID</code> header, as
           described here, until the series expires or is finished. The effect of
           the request, if it has one, and if the request is successful, SHOULD
-          NOT be visible to clients not using that transaction identifier The
+          NOT be visible to clients not using that transaction identifier. The
           effect of the request MUST NOT be durable unless and until the series
           is successfully <a href="#commit">finished</a>.
         </p>
@@ -247,9 +247,12 @@
           <code>PUT</code> request to the transaction identifier URI.
         </p>
         <p>
-          The request body of this request MAY be non-empty. If it is non-empty,
-          [TODO: should we specify? or leave it up to implementations; this
-          could be a place to include commit messages, author info, etc.]
+          The request body of this request MUST be a JSON document with at least
+          the single key `state` with the value `committed`. Implementations MAY
+          include additional keys in this JSON document. The interpretation of
+          those keys and their values is outside the scope of this
+          specififcation. A server MUST ignore keys in the JSON document that it
+          does not recognize.
         </p>
         <p>
           The effects of all requests in the series MUST become durable and MUST
