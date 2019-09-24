@@ -94,8 +94,7 @@
       <h2>Terminology</h2>
       <dl>
         <dt>transaction endpoint</dt>
-        <dd>an HTTP resource that supports operations to create a new
-        transaction</dd>
+        <dd>a URI that supports operations to create a new transaction</dd>
         <dt>transaction identifier</dt>
         <dd>a URI that uniquely identifies a transaction, and which may be used
         to perform operations on that transaction</dd>
@@ -165,7 +164,7 @@
         <h2>Transaction endpoint</h2>
         <p>
           Transactions are created through a <dfn>transaction endpoint</dfn>.
-          The <dfn>transaction endpoint URI</dfn> MUST be a resolvable HTTP URI.
+          The transaction endpoint MUST be a resolvable HTTP URI.
         </p>
         <p>
           A server that supports atomic operations MUST advertise this support
@@ -195,8 +194,8 @@
         <h2>Adding to an atomic series of operations</h2>
         <p>
           A client adds to an atomic batch operation by including an
-          <code>Atomic-ID</code> request header. The value of this header is a
-          transaction identifier.
+          <code>Atomic-ID</code> request header to its request. The value of
+          this header is a transaction identifier.
         </p>
         <p>
           The effect of the request, if it has one, and if the request is
@@ -209,7 +208,7 @@
           is successfully <a href="#commit">finished</a>.
         </p>
         <p>
-          If the request is successful, the server MUST include a
+          If the request is successful, the server MUST include an
           <code>Atomic-ID</code> response header whose value MUST be the current
           transaction identifier.
         </p>
@@ -238,6 +237,19 @@
         <p>
           An implementation SHOULD permit extending the lifetime of a series by
           a <code>POST</code> request to the transaction identifier URI.
+          If an implementation supports extending the lifetime of a series, and
+          is able to successfully update the transaction, it MUST respond with a
+          <code>204 No Content</code> HTTP status. It MUST also include an
+          <code>Atomic-Expires</code> header in the response with the new HTTP
+          datetime at which the series will expire.
+        </p>
+        <p>
+          If the server supports extending the lifetime of series in general,
+          but is unable to do so for a particular instance, it MUST respond with
+          a <code>409 Conflict</code> HTTP status. The server MAY also include
+          more information in the body of the response describing the reason for
+          not extending the lifetime of the transaction.
+        </p>
       </section>
 
       <section id="commit">
