@@ -98,6 +98,9 @@
         <dt>transaction identifier</dt>
         <dd>a URI that uniquely identifies a transaction, and which may be used
         to perform operations on that transaction</dd>
+        <dt>commit endpoint</dt>
+        <dd>a URI that a client uses to indicate that they are finishing a
+        transaction and they wish their changes to become durable</dd>
       </dl>
     </section>
     <section id ="atomic-operations">
@@ -115,46 +118,51 @@
           HEAD http://example.org/repo
 
           200 OK
-          Link: &lt;http://example.org/repo/fcr:tx>; rel="http://fedora.info/definitions/v4/transaction#endpoint"
+          Link: &lt;http://example.org/repo/fcr:tx>;
+                rel="http://fedora.info/definitions/v4/transaction#endpoint"
 
           # Begin a transaction
 
           POST http://example.org/repo/fcr:tx
 
           201 Created
-          Location: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          Location: http://example.org/repo/fcr:tx/13423c37-2e36-425e-a126-9025e2da7aae
+          Link: &lt;http://example.org/repo/fcr:tx/13423c37-2e36-425e-a126-9025e2da7aae/commit;
+                rel="http://fedora.info/definitions/v4/transaction#commitEndpoint"
 
           # Create a new resource within the transaction
 
           POST http://example.org/repo/container
-          Atomic-ID: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          Slug: foobar
+          Atomic-ID: http://example.org/repo/fcr:tx/13423c37-2e36-425e-a126-9025e2da7aae
 
           201 Created
-          Location: http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
-          Atomic-ID: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          Location: http://example.org/repo/container/foobar
+          Atomic-ID: http://example.org/repo/fcr:tx/13423c37-2e36-425e-a126-9025e2da7aae
 
           # That resource is not visible outside of the transaction
 
-          HEAD http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
+          HEAD http://example.org/repo/container/foobar
 
           404 Not Found
 
           # But is visible within the transaction
 
-          HEAD http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
-          Atomic-ID: http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          HEAD http://example.org/repo/container/foobar
+          Atomic-ID: http://example.org/repo/fcr:tx/13423c37-2e36-425e-a126-9025e2da7aae
 
           200 OK
 
           # Commit the transaction
 
-          PUT http://example.org/repo/fcr:tx/01234567-89ab-cdef-0123-456789abcdef
+          PUT
+          http://example.org/repo/fcr:tx/13423c37-2e36-425e-a126-9025e2da7aae/commit
 
           204 No Content
 
           # Now the new resource is visible outside the transaction
 
-          HEAD http://example.org/repo/container/abcdef01-2345-6789-abcd-ef0123456789
+          HEAD http://example.org/repo/container/foobar
 
           200 OK
         </pre>
@@ -188,6 +196,13 @@
           identifier</dfn>. A transaction identifier MUST be a resolvable HTTP
           URI.
         </p>
+        <p>
+          A server MUST also include a <code>Link</code> header in its response.
+          The value of this link MUST be a <dfn>commit endpoint</dfn>. The
+          <code>rel</code> parameter of this header MUST be
+          <code>http://fedora.info/definitions/v4/transaction#commitEndpoint</code>.
+          A commit endpoint MUST be a resolvable HTTP URI.
+        </p>
       </section>
 
       <section id="adding">
@@ -201,11 +216,12 @@
           The effect of the request, if it has one, and if the request is
           successful, MUST be visible to clients using the same transaction
           identifier as the value of the <code>Atomic-ID</code> header, as
-          described here, until the series expires or is finished. The effect of
-          the request, if it has one, and if the request is successful, SHOULD
-          NOT be visible to clients not using that transaction identifier. The
-          effect of the request MUST NOT be durable unless and until the series
-          is successfully <a href="#commit">finished</a>.
+          described here, until the series <a href="#expiration">expires</a> or
+          is <a href="#commit">finished</a>. The effect of the request, if it
+          has one, and if the request is successful, SHOULD NOT be visible to
+          clients not using that transaction identifier. The effect of the
+          request MUST NOT be durable unless and until the series is
+          successfully <a href="#commit">finished</a>.
         </p>
         <p>
           If the request is successful, the server MUST include an
@@ -256,15 +272,7 @@
         <h2>Committing a series</h2>
         <p>
           A client finishes an atomic series of requests by sending a
-          <code>PUT</code> request to the transaction identifier URI.
-        </p>
-        <p>
-          The request body of this request MUST be a JSON document with at least
-          the single key `state` with the value `committed`. Implementations MAY
-          include additional keys in this JSON document. The interpretation of
-          those keys and their values is outside the scope of this
-          specififcation. A server MUST ignore keys in the JSON document that it
-          does not recognize.
+          <code>PUT</code> request to the commit endpoint for the transaction.
         </p>
         <p>
           The effects of all requests in the series MUST become durable and MUST
@@ -290,7 +298,8 @@
         <p>
           The effects of all requests in the series MUST disappear to all
           clients, and MUST be durably gone. The transaction identifier URI of
-          the series MUST be expired and MUST NOT be reused.
+          the series MUST be expired and MUST NOT be reused. In addition, the
+          commit endpoint MUST be expired and MUST NOT be reused.
         </p>
         <p>
           If the server is able to successfully complete this request, it MUST
