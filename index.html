@@ -235,6 +235,14 @@
           server MAY also include more information about the reason for
           rejecting the request in the response body.
         </p>
+        <p>
+          A server MAY choose to reject certain operations it normally supports
+          when it receives those requests with an <code>Atomic-ID</code>. If
+          this is the case, the server MUST respond to those requests with a
+          <code>403 Forbidden</code> HTTP status. The server MAY also include
+          more infromation about the reason for rejecting the request in the
+          response body.
+        </p>
       </section>
 
       <section id="expiration">
